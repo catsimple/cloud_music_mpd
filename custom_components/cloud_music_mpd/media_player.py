@@ -134,7 +134,6 @@ class MpdDevice(MediaPlayerEntity):
 
         self.playlist = []
         self.playindex = 0
-        self.is_tts = False
         self._attr_unique_id = server
         self._attributes = {
             'platform': 'cloud_music'
@@ -200,10 +199,6 @@ class MpdDevice(MediaPlayerEntity):
                 self._attr_media_title = music_info.song
                 self._attr_app_name = music_info.singer
                 self._attr_media_artist = music_info.singer
-                if self.is_tts:
-                    await self._client.pause(0)
-                    await self._client.delete(len(self.playlist))
-                    self.is_tts = False
 
     @property
     def available(self):
@@ -387,10 +382,7 @@ class MpdDevice(MediaPlayerEntity):
                     await self._client.play(self.playindex)
                 elif result.startswith('http'):
                     # HTTP播放链接
-                    playindex = len(self.playlist)
-                    await self._client.add(result)
-                    await self._client.play(playindex)
-                    self.is_tts = True
+                    pass
                 else:
                     # 添加播放列表到播放器
                     await self._client.clear()
@@ -398,11 +390,10 @@ class MpdDevice(MediaPlayerEntity):
                     await self._client.play(self.playindex)
     
     async def playlist_add(self, index):
-        if index < len(self.playlist):
+        while index < len(self.playlist):
             music_info = self.playlist[index]
-            # print(music_info.url)
             await self._client.add(music_info.url)
-            await self.playlist_add(index + 1)
+            index += 1
 
     @property
     def repeat(self):
@@ -454,6 +445,7 @@ class MpdDevice(MediaPlayerEntity):
         self, media_content_type: str | None = None, media_content_id: str | None = None
     ) -> BrowseMedia:
         """Implement the websocket media browsing helper."""
+        
         cloud_music = self.hass.data.get('cloud_music')
         if cloud_music is not None:
             return await cloud_music.async_browse_media(self, media_content_type, media_content_id)
